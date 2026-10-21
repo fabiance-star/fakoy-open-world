@@ -152,7 +152,7 @@ x+xx,yy,z+d/2+0.07);
 const player=new THREE.Group();
 scene.add(player);
 
-const body=box(1,1.5,0x2563eb,0,0,0);
+const body=box(1,1.5,0.8,0x2563eb);
 body.position.set(0,1.7,0);
 player.add(body);
 
@@ -163,10 +163,14 @@ new THREE.MeshLambertMaterial({color:0x8c5739})
 head.position.set(0,2.7,0);
 player.add(head);
 
-const leg1=box(0.32,0.9,0x202b40,-0.28,0.45,0);
-const leg2=box(0.32,0.9,0x202b40,0.28,0.45,0);
+
+const leg1=box(0.32,0.9,0.32,0x202b40);
+leg1.position.set(-0.28,0.45,0);
+
+const leg2=box(0.32,0.9,0.32,0x202b40);
+leg2.position.set(0.28,0.45,0);
+
 player.add(leg1,leg2);
-player.position.set(0,0,0);
 
 // Cars
 function makeCar(x,z,color,police){
