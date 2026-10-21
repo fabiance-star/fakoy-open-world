@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+ content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Fakoy Open World 3D</title>
+<style>
+html,body{margin:0;overflow:hidden;background:#8ac8ef;
+font-family:Arial,sans-serif;touch-action:none}
+canvas{display:block}
+#hud{position:fixed;top:12px;left:12px;color:white;
+background:#101c2ddd;padding:12px;border-radius:10px;
+font-size:14px;line-height:1.7;z-index:2}
+#help{position:fixed;top:12px;right:12px;color:white;
+background:#101c2ddd;padding:10px;border-radius:10px;
+font-size:12px;z-index:2}
+#message{position:fixed;inset:0;display:none;align-items:center;
+justify-content:center;flex-direction:column;
+background:#000b;color:white;z-index:10;text-align:center}
+#message h1{font-size:42px;color:#ff4545}
+button{border:0;border-radius:9px;padding:12px 16px;
+font-weight:bold;background:#ffcc28;color:#172033}
+#mobile{position:fixed;bottom:18px;left:18px;z-index:3;
+display:grid;grid-template-columns:55px 55px 55px;gap:6px}
+#mobile button{padding:15px 0;background:#14243ccc;color:white;
+border:1px solid #ffffff77;font-size:18px}
+#run{position:fixed;bottom:30px;right:20px;z-index:3;
+background:#ffcc28}
+@media(min-width:800px){#mobile,#run{display:none}}
+</style>
+</head>
+<body>
+<div id="hud">
+<b>FAKOY OPEN WORLD</b><br>
+Health: <span id="health">100</span>%<br>
+Wanted: <span id="wanted">0</span> stars<br>
+Mission: Explore the city<br>
+Speed: <span id="speed">0</span>
+</div>
+<div id="help">
+<b>CONTROLS</b><br>
+W / ↑ = Forward<br>
+S / ↓ = Backward<br>
+A / ← = Left<br>
+D / → = Right<br>
+SHIFT = Run
+</div>
+<div id="mobile">
+<button data-key="w">▲</button><button data-key="w">↑</button><button data-key="w">▲</button>
+<button data-key="a">◀</button><button data-key="s">▼</button><button data-key="d">▶</button>
+</div>
+<button id="run">RUN</button>
+
+<div id="message">
+<h1>GAME OVER</h1>
+<p>The police caught you!</p>
+<button onclick="location.reload()">PLAY AGAIN</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+if(!window.THREE){
+document.body.innerHTML =
+'<h2 style="color:white;padding:25px">Three.js haijapakia. Angalia intaneti kisha refresh ukurasa.</h2>';
+return;
+}
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x88c9f2);
+scene.fog = new THREE.Fog(0x88c9f2, 100, 360);
+
+const camera = new THREE.PerspectiveCamera(
+70, innerWidth/innerHeight, 0.1, 600
+);
+
+const renderer = new THREE.WebGLRenderer({
+antialias:false, powerPreference:"low-power"
+});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
+renderer.shadowMap.enabled = false;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x526344,2));
+
+const sun = new THREE.DirectionalLight(0xffffff,1.6);
+sun.position.set(80,120,50);
+scene.add(sun);
+
+function box(w,h,d,color,x,y,z){
+const mesh = new THREE.Mesh(
+new THREE.BoxGeometry(w,h,d),
+new THREE.MeshLambertMaterial({color:color})
+);
+mesh.position.set(x,y,z);
+scene.add(mesh);
+return mesh;
+}
+
+// Ground and road network
+box(600,1,600,0x559b55,0,-1,0);
+
+for(let i=-250;i<=250;i+=50){
+box(12,0.15,600,0x343940,i, -0.38,0);
+box(600,0.15,12,0x343940,0,-0.37,i);
+
+for(let j=-270;j<280;j+=22){
+box(0.3,0.04,5,0xf5df8a,i,-0.27,j);
+box(5,0.04,0.3,0xf5df8a,j,-0.26,i);
+}
+}
+
+// Buildings
+const buildingColors=[
+0xd9d9d2,0xc4cbd4,0xd5b69a,
+0xb2c9d9,0xe2d5be,0x999fae,
+0xc8d7c0
+];
+
+let seed=321;
+function rand(){
+seed=(seed*1664525+1013904223)>>>0;
+return seed/4294967296;
+}
+
+for(let x=-250;x<=250;x+=25){
+for(let z=-250;z<=250;z+=25){
+if(Math.abs(x%50)<1 || Math.abs(z%50)<1)continue;
+if(Math.abs(x)<25 && Math.abs(z)<25)continue;
+
+const w=9+rand()*7;
+const d=9+rand()*7;
+const h=8+rand()*36;
+
+box(w,h,d,buildingColors[
+Math.floor(rand()*buildingColors.length)
+],x,h/2,z);
+
+// Windows on street-facing side
+for(let yy=3;yy<h-1;yy+=4){
+for(let xx=-w/2+2;xx<w/2-1;xx+=3){
+box(0.9,1.5,0.12,0x78c9ed,
+x+xx,yy,z+d/2+0.07);
+}
+}
+}
+}
+
+// Simple player model
+const player=new THREE.Group();
+scene.add(player);
+
+const body=box(1,1.5,0x2563eb,0,0,0);
+body.position.set(0,1.7,0);
+player.add(body);
+
+const head=new THREE.Mesh(
+new THREE.SphereGeometry(0.42,8,6),
+new THREE.MeshLambertMaterial({color:0x8c5739})
+);
+head.position.set(0,2.7,0);
+player.add(head);
+
+const leg1=box(0.32,0.9,0x202b40,-0.28,0.45,0);
+const leg2=box(0.32,0.9,0x202b40,0.28,0.45,0);
+player.add(leg1,leg2);
+player.position.set(0,0,0);
+
+// Cars
+function makeCar(x,z,color,police){
+const car=new THREE.Group();
+const base=new THREE.Mesh(
+new THREE.BoxGeometry(2.2,0.9,4),
+new THREE.MeshLambertMaterial({color:color})
+);
+base.position.y=0.8;
+car.add(base);
+
+const top=new THREE.Mesh(
+new THREE.BoxGeometry(1.6,0.75,1.8),
+new THREE.MeshLambertMaterial({color:0x9fd8ef})
+);
+top.position.set(0,1.55,-0.2);
+car.add(top);
+
+for(const wx of [-1,1]){
+for(const wz of [-1.25,1.25]){
+const wheel=new THREE.Mesh(
+new THREE.BoxGeometry(0.35,0.65,0.7),
+new THREE.MeshLambertMaterial({color:0x171717})
+);
+wheel.position.set(wx,0.55,wz);
+car.add(wheel);
+}
+}
+if(police){
+box(0.5,0.18,0.4,0xff2222,x,2.1,z);
+}
+car.position.set(x,0,z);
+scene.add(car);
+return car;
+}
+
+const cars=[];
+cars.push({obj:makeCar(8,18,0xe6a52e,false),zdir:1});
+cars.push({obj:makeCar(-12,-22,0x24a5bc,false),zdir:-1});
+cars.push({obj:makeCar(25,45,0xeeeeee,false),zdir:1});
+
+const police=makeCar(-30,0,0x17263d,true);
+let policeActive=false;
+let health=100;
+let gameOver=false;
+let wanted=0;
+let speed=0;
+
+const keys={};
+addEventListener("keydown",e=>{
+keys[e.key.toLowerCase()]=true;
+if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase()))e.preventDefault();
+});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+document.querySelectorAll("[data-key]").forEach(btn=>{
+const k=btn.dataset.key;
+btn.addEventListener("pointerdown",e=>{
+e.preventDefault();keys[k]=true;
+});
+["pointerup","pointercancel","pointerleave"].forEach(ev=>
+btn.addEventListener(ev,()=>keys[k]=false));
+});
+
+document.getElementById("run").addEventListener("pointerdown",()=>{
+keys["shift"]=true;
+});
+["pointerup","pointerleave","pointercancel"].forEach(ev=>
+document.getElementById("run").addEventListener(ev,()=>{
+keys["shift"]=false;
+}));
+
+// Player movement and chase camera
+const clock=new THREE.Clock();
+let angle=0;
+let caughtTimer=0;
+
+function animate(){
+requestAnimationFrame(animate);
+const dt=Math.min(clock.getDelta(),0.04);
+
+if(!gameOver){
+const forward=keys["w"]||keys["arrowup"];
+const backward=keys["s"]||keys["arrowdown"];
+const left=keys["a"]||keys["arrowleft"];
+const right=keys["d"]||keys["arrowright"];
+
+const moving=forward||backward;
+speed=moving?(keys["shift"]?18:9):0;
+
+if(left)angle+=2.1*dt;
+if(right)angle-=2.1*dt;
+
+if(forward){
+player.position.x-=Math.sin(angle)*speed*dt;
+player.position.z-=Math.cos(angle)*speed*dt;
+}
+if(backward){
+player.position.x+=Math.sin(angle)*speed*dt*0.6;
+player.position.z+=Math.cos(angle)*speed*dt*0.6;
+}
+
+player.rotation.y=angle;
+
+// Keep player inside playable world
+player.position.x=THREE.MathUtils.clamp(player.position.x,-280,280);
+player.position.z=THREE.MathUtils.clamp(player.position.z,-280,280);
+
+// Move traffic
+cars.forEach(car=>{
+car.obj.position.z+=car.zdir*5*dt;
+if(car.obj.position.z>260)car.obj.position.z=-260;
+if(car.obj.position.z<-260)car.obj.position.z=260;
+});
+
+// Police pursuit begins when you run
+if(keys["shift"] && moving){
+wanted=1;
+policeActive=true;
+}
+
+if(policeActive){
+const dx=player.position.x-police.position.x;
+const dz=player.position.z-police.position.z;
+const dist=Math.sqrt(dx*dx+dz*dz);
+
+police.position.x+=(dx/(dist||1))*7*dt;
+police.position.z+=(dz/(dist||1))*7*dt;
+police.rotation.y=Math.atan2(-dx,-dz);
+
+if(dist<2.5){
+caughtTimer+=dt;
+health=Math.max(0,100-caughtTimer*45);
+if(caughtTimer>2.2){
+gameOver=true;
+document.getElementById("message").style.display="flex";
+}
+}else{
+caughtTimer=Math.max(0,caughtTimer-dt*0.5);
+}
+}
+
+// Camera follows behind the player
+const camX=player.position.x+Math.sin(angle)*11;
+const camZ=player.position.z+Math.cos(angle)*11;
+camera.position.lerp(
+new THREE.Vector3(camX,7,camZ),0.08
+);
+camera.lookAt(player.position.x,1.7,player.position.z);
+
+document.getElementById("health").textContent=Math.round(health);
+document.getElementById("wanted").textContent=wanted;
+document.getElementById("speed").textContent=Math.round(speed);
+}
+
+renderer.render(scene,camera);
+}
+
+camera.position.set(0,7,12);
+animate();
+
+addEventListener("resize",()=>{
+camera.aspect=innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(innerWidth,innerHeight);
+});
+})();
+</script>
+</body>
+</html>
